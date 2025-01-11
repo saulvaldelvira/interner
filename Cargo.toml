@@ -1,0 +1,13 @@
+[package]
+name = "interns"
+description = "Object interner"
+authors = ["Saúl Valdelvira <saul@saulv.es>"]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+readme = "README"
+repository = "https://git.saulv.es/interner"
+
+[dependencies]
+hashbrown = "0.15.2"
+
