@@ -15,7 +15,7 @@ pub struct StringBuf {
 #[repr(transparent)]
 pub struct Symbol(usize);
 
-impl Backend for StringBuf {
+impl Backend<str> for StringBuf {
     type Symbol = Symbol;
 
     fn intern(&mut self, src: &str) -> Self::Symbol {
