@@ -32,10 +32,10 @@ use hashbrown::hash_map::RawEntryMut;
 use hashbrown::{DefaultHashBuilder, HashMap};
 use std::hash::{BuildHasher, Hash};
 
-mod backend;
-pub use backend::{Backend, DefaultBackend, StringBuf};
+pub mod backend;
+pub use backend::{Backend, DefaultBackendBuilder, StringBuf};
 
-pub type Symbol<T, B = <T as DefaultBackend>::B> = <B as Backend<T>>::Symbol;
+pub type Symbol<T, B = <T as DefaultBackendBuilder>::Backend> = <B as Backend<T>>::Symbol;
 
 pub type StringInterner = Interner<str,StringBuf>;
 
@@ -68,7 +68,7 @@ pub type StringInterner = Interner<str,StringBuf>;
 /// ```
 pub struct Interner<
     T,
-    B = <T as DefaultBackend>::B,
+    B = <T as DefaultBackendBuilder>::Backend,
     H = DefaultHashBuilder
 >
 where

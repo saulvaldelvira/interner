@@ -10,28 +10,30 @@ pub use string_buf::StringBuf;
 ///
 /// # Example
 /// ```
-/// use interns::DefaultBackend;
+/// use interns::DefaultBackendBuilder;
 ///
 /// /* Get the default backend for the str type */
-/// let backend = <str as DefaultBackend>::build_backend();
+/// let backend = <str as DefaultBackendBuilder>::build_backend();
 /// ```
-pub trait DefaultBackend {
-    type B: Backend<Self>;
-    fn build_backend() -> Self::B;
+pub trait DefaultBackendBuilder {
+    type Backend: Backend<Self>;
+    fn build_backend() -> Self::Backend;
 }
 
-impl<T: Sized + Clone> DefaultBackend for T {
-    type B = VecBackend<T>;
+pub type DefaultBackend<T> = <T as DefaultBackendBuilder>::Backend;
 
-    fn build_backend() -> Self::B {
+impl<T: Sized + Clone> DefaultBackendBuilder for T {
+    type Backend = VecBackend<T>;
+
+    fn build_backend() -> Self::Backend {
         VecBackend::default()
     }
 }
 
-impl DefaultBackend for str {
-    type B = StringBuf;
+impl DefaultBackendBuilder for str {
+    type Backend = StringBuf;
 
-    fn build_backend() -> Self::B {
+    fn build_backend() -> Self::Backend {
         StringBuf::default()
     }
 }
