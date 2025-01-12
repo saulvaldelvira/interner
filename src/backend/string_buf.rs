@@ -1,10 +1,11 @@
 use crate::Backend;
 
-pub struct Span {
+struct Span {
     pub offset: usize,
     pub len: usize,
 }
 
+/// Backend for strings
 #[derive(Default)]
 pub struct StringBuf {
     buf: String,

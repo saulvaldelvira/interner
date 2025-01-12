@@ -1,5 +1,6 @@
 use super::Backend;
 
+/// Backend that stores elements inside a [Vec]
 pub struct VecBackend<T> {
     buf: Vec<T>,
 }

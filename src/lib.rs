@@ -1,9 +1,39 @@
+//! An object interner library
+//!
+//! The main element of this crate is the [`Interner`] struct.
+//!
+//! It allows to build a "storage" of any kind of object that
+//! avoids repetition and memory waste.
+//!
+//! # Example (String interner)
+//! ```
+//! use interns::*;
+//!
+//! let mut interner = Interner::<str>::default();
+//!
+//! let a = interner.get_or_intern("hello");
+//! let b = interner.get_or_intern("world");
+//! let c = interner.get_or_intern("hello");
+//!
+//! let a_resolv = interner.resolve(a);
+//! let b_resolv = interner.resolve(b);
+//! let c_resolv = interner.resolve(c);
+//!
+//! assert_eq!(a_resolv, Some("hello"));
+//! assert_eq!(b_resolv, Some("world"));
+//! assert_eq!(c_resolv, Some("hello"));
+//!
+//! assert_eq!(a, c);
+//! assert_ne!(a, b);
+//! assert_ne!(b, c);
+//! ```
+
 use hashbrown::hash_map::RawEntryMut;
 use hashbrown::{DefaultHashBuilder, HashMap};
 use std::hash::{BuildHasher, Hash};
 
 mod backend;
-use backend::{Backend, DefaultBackend, StringBuf};
+pub use backend::{Backend, DefaultBackend, StringBuf};
 
 pub type Symbol<T, B = <T as DefaultBackend>::B> = <B as Backend<T>>::Symbol;
 
@@ -57,6 +87,8 @@ where
     H: BuildHasher,
     B: Backend<T>,
 {
+    /// Create a new Interner with a default [backend](Backend)
+    /// and [hasher](BuildHasher)
     pub fn new() -> Self
     where
         B: Default,
@@ -69,6 +101,8 @@ where
         }
     }
 
+    /// Create a new Interner with a default [backend](Backend) and
+    /// the given [hasher](BuildHasher)
     pub fn with_hasher(hasher: H) -> Self
     where
         B: Default,
@@ -80,6 +114,8 @@ where
         }
     }
 
+    /// Create a new Interner with a default [hasher](BuildHasher) and
+    /// the given [backend](Backend)
     pub fn with_backend(backend: B) -> Self
     where
         H: Default,
@@ -91,6 +127,8 @@ where
         }
     }
 
+    /// Create a new Interner with the given [backend](Backend)
+    /// and [hasher](BuildHasher)
     pub fn with_backend_and_hasher(backend: B, hasher: H) -> Self {
         Self {
             backend,
@@ -99,6 +137,7 @@ where
         }
     }
 
+    /// Turns a reference of T into the backend's [symbol](Backend::Symbol)
     pub fn get_or_intern(&mut self, src: &T) -> B::Symbol {
         let Self {
             backend,
@@ -110,7 +149,7 @@ where
 
         let entry = set
             .raw_entry_mut()
-            .from_hash(hash, |&sym| src == unsafe { backend.get_unchecked(sym) });
+            .from_hash(hash, |&sym| src == unsafe { backend.get(sym).unwrap_unchecked() });
 
         let k = match entry {
             RawEntryMut::Occupied(occupied) => occupied.into_key(),
@@ -118,7 +157,7 @@ where
                 let sym = backend.intern(src);
                 vacant
                     .insert_with_hasher(hash, sym, (), |sym| {
-                        let src = unsafe { backend.get_unchecked(*sym) };
+                        let src = unsafe { backend.get(*sym).unwrap_unchecked() };
                         hasher.hash_one(src)
                     })
                     .0
@@ -128,6 +167,7 @@ where
         *k
     }
 
+    /// Resolves the [symbol](Backend::Symbol) into a reference of T
     pub fn resolve(&self, sym: B::Symbol) -> Option<&T> {
         self.backend.get(sym)
     }
@@ -144,57 +184,4 @@ where
 }
 
 #[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn string() {
-        let mut interner = Interner::<str>::default();
-
-        let a = interner.get_or_intern("hello");
-        let b = interner.get_or_intern("world");
-        let c = interner.get_or_intern("hello");
-
-        let mut map = HashMap::new();
-        map.insert(a, "hello");
-        map.insert(b, "world");
-
-        assert_eq!(a, c);
-        assert_ne!(a, b);
-        assert_ne!(b, c);
-
-        let hello = *map.get(&c).unwrap();
-        assert_eq!(hello, "hello");
-    }
-
-    #[test]
-    fn test_struct() {
-
-        #[derive(Debug,Clone,Eq,PartialEq,Hash)]
-        struct S {
-            num: i32,
-            s: String
-        }
-
-        let mut interner = Interner::<S>::default();
-
-        let hello = S { num: 12, s: "hello".to_string() };
-        let world = S { num: 13, s: "world".to_string() };
-
-        let a = interner.get_or_intern(&hello);
-        let b = interner.get_or_intern(&world);
-        let c = interner.get_or_intern(&hello);
-
-        assert_eq!(a, c);
-        assert_ne!(a, b);
-        assert_ne!(b, c);
-
-        let hello_res = interner.resolve(a).unwrap();
-        let world_res = interner.resolve(b).unwrap();
-        let hello_res2 = interner.resolve(c).unwrap();
-
-        assert_eq!(hello_res, &hello);
-        assert_eq!(world_res, &world);
-        assert_eq!(hello_res2, &hello);
-    }
-}
+mod test;
