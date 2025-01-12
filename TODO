@@ -1,0 +1,10 @@
+== More flexible get_or_intern ==
+
+If we have an interner of Box<[u32]>, it would be nice
+to have an API that allows us to pass a &[u32] to the
+interner. Else, we'll have to create a box every time,
+which is more expensive.
+
+Limitations:
+- In terms of Hashing / Equality comparison, we need to
+  take in count that Box<[u32]> and &[u32] may differ
