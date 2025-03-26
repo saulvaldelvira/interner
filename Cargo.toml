@@ -2,12 +2,13 @@
 name = "interns"
 description = "Object interner"
 authors = ["Saúl Valdelvira <saul@saulv.es>"]
-version = "0.1.1"
-edition = "2021"
+version = "0.1.2"
+edition = "2024"
 license = "MIT"
 readme = "README"
 repository = "https://git.saulv.es/interner"
 
-[dependencies]
-hashbrown = "0.15.2"
-
+[dependencies.hashbrown]
+version = ">=0.15.2"
+default-features=false
+features = ["raw-entry", "inline-more"]

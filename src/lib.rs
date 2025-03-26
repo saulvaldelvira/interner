@@ -29,8 +29,8 @@
 //! ```
 
 use hashbrown::hash_map::RawEntryMut;
-use hashbrown::{DefaultHashBuilder, HashMap};
-use std::hash::{BuildHasher, Hash};
+use hashbrown::HashMap;
+use std::hash::{BuildHasher, Hash, RandomState};
 
 pub mod backend;
 pub use backend::{Backend, DefaultBackendBuilder, StringBuf};
@@ -69,7 +69,7 @@ pub type StringInterner = Interner<str,StringBuf>;
 pub struct Interner<
     T,
     B = <T as DefaultBackendBuilder>::Backend,
-    H = DefaultHashBuilder
+    H = RandomState
 >
 where
     T: Hash + Eq + PartialEq + ?Sized,
