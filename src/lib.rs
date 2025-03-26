@@ -28,9 +28,15 @@
 //! assert_ne!(b, c);
 //! ```
 
-use hashbrown::hash_map::RawEntryMut;
-use hashbrown::HashMap;
-use std::hash::{BuildHasher, Hash, RandomState};
+#![cfg_attr(not(feature = "hashbrown"), feature(hash_raw_entry))]
+
+#[cfg(feature = "hashbrown")]
+use hashbrown::{HashMap, hash_map::RawEntryMut};
+
+#[cfg(not(feature = "hashbrown"))]
+use std::collections::{HashMap, hash_map::RawEntryMut};
+
+use std::hash::{BuildHasher, Hash, Hasher, RandomState};
 
 pub mod backend;
 pub use backend::{Backend, DefaultBackendBuilder, StringBuf};
@@ -38,6 +44,34 @@ pub use backend::{Backend, DefaultBackendBuilder, StringBuf};
 pub type Symbol<T, B = <T as DefaultBackendBuilder>::Backend> = <B as Backend<T>>::Symbol;
 
 pub type StringInterner = Interner<str,StringBuf>;
+
+/// Dummy state that implements [Hasher] and [BuildHasher]
+///
+/// NOTE: This struct shouldn't be used.
+/// All the methods it implements from the [Hasher] and [BuildHasher]
+/// traits are marked as [unreachable].
+///
+/// It's only there to satisfy the HashMap's requirement that S: BuildHasher
+#[derive(Default)]
+pub struct DummyState;
+
+impl Hasher for DummyState {
+    fn finish(&self) -> u64 {
+        unreachable!()
+    }
+
+    fn write(&mut self, _bytes: &[u8]) {
+        unreachable!()
+    }
+}
+
+impl BuildHasher for DummyState {
+    type Hasher = DummyState;
+
+    fn build_hasher(&self) -> Self::Hasher {
+        unreachable!()
+    }
+}
 
 /// Interner
 ///
@@ -77,7 +111,7 @@ where
     B: Backend<T>,
 {
     backend: B,
-    set: HashMap<B::Symbol, (), ()>,
+    set: HashMap<B::Symbol, (), DummyState>,
     hasher: H,
 }
 
@@ -155,12 +189,7 @@ where
             RawEntryMut::Occupied(occupied) => occupied.into_key(),
             RawEntryMut::Vacant(vacant) => {
                 let sym = backend.intern(src);
-                vacant
-                    .insert_with_hasher(hash, sym, (), |sym| {
-                        let src = unsafe { backend.get(*sym).unwrap_unchecked() };
-                        hasher.hash_one(src)
-                    })
-                    .0
+                vacant.insert_hashed_nocheck(hash, sym, ()).0
             }
         };
 

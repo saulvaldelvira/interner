@@ -2,6 +2,8 @@ use std::ops::Deref;
 
 use super::*;
 
+use std::collections::HashMap;
+
 #[test]
 fn string() {
     let mut interner = Interner::<str>::default();
