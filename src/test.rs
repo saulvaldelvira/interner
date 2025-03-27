@@ -72,3 +72,35 @@ fn array_test() {
     assert_eq!(v2_res.deref(), &[5,4,6,4]);
     assert_eq!(v3_res.deref(), &[1,2,3,4]);
 }
+
+/// Test that the interner remains coherent after resizing the
+/// internal hash table
+#[test]
+fn resize_test() {
+    let mut interner = Interner::<str>::default();
+
+    let mut nums = vec![];
+    let mut cap = 0;
+    const MAX: usize = 99999;
+
+    for i in 0..MAX {
+        let s = format!("{i}");
+        let n = interner.get_or_intern(&s);
+        nums.push(n);
+
+        /* When half of the elements are inserted,
+         * save the capacity for later checking */
+        if i == MAX / 2 {
+            cap = interner.capacity();
+        }
+    }
+
+    /* The hash map must have been resized */
+    assert!(interner.capacity() > cap);
+
+    /* All the elements should be resolved correctly */
+    for (i,n) in nums.iter().enumerate() {
+        assert_eq!(interner.resolve(*n), Some(format!("{i}")).as_deref());
+    }
+
+}

@@ -2,7 +2,7 @@
 name = "interns"
 description = "Object interner"
 authors = ["Saúl Valdelvira <saul@saulv.es>"]
-version = "0.2.1"
+version = "0.3.0"
 edition = "2024"
 license = "MIT"
 readme = "README"

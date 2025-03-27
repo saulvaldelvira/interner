@@ -36,7 +36,7 @@ use hashbrown::{HashMap, hash_map::RawEntryMut};
 #[cfg(not(feature = "hashbrown"))]
 use std::collections::{HashMap, hash_map::RawEntryMut};
 
-use std::hash::{BuildHasher, Hash, Hasher, RandomState};
+use std::hash::{BuildHasher, Hash, RandomState};
 
 pub mod backend;
 pub use backend::{Backend, DefaultBackendBuilder, StringBuf};
@@ -44,34 +44,6 @@ pub use backend::{Backend, DefaultBackendBuilder, StringBuf};
 pub type Symbol<T, B = <T as DefaultBackendBuilder>::Backend> = <B as Backend<T>>::Symbol;
 
 pub type StringInterner = Interner<str,StringBuf>;
-
-/// Dummy state that implements [Hasher] and [BuildHasher]
-///
-/// NOTE: This struct shouldn't be used.
-/// All the methods it implements from the [Hasher] and [BuildHasher]
-/// traits are marked as [unreachable].
-///
-/// It's only there to satisfy the HashMap's requirement that S: BuildHasher
-#[derive(Default)]
-struct DummyState;
-
-impl Hasher for DummyState {
-    fn finish(&self) -> u64 {
-        unreachable!()
-    }
-
-    fn write(&mut self, _bytes: &[u8]) {
-        unreachable!()
-    }
-}
-
-impl BuildHasher for DummyState {
-    type Hasher = DummyState;
-
-    fn build_hasher(&self) -> Self::Hasher {
-        unreachable!()
-    }
-}
 
 /// Interner
 ///
@@ -111,14 +83,13 @@ where
     B: Backend<T>,
 {
     backend: B,
-    set: HashMap<B::Symbol, (), DummyState>,
-    hasher: H,
+    set: HashMap<B::Symbol, (), H>,
 }
 
 impl<T, B, H> Interner<T, B, H>
 where
     T: Hash + Eq + PartialEq + ?Sized,
-    H: BuildHasher,
+    H: BuildHasher + Default,
     B: Backend<T>,
 {
     /// Create a new Interner with a default [backend](Backend)
@@ -131,7 +102,6 @@ where
         Self {
             backend: B::default(),
             set: HashMap::default(),
-            hasher: H::default(),
         }
     }
 
@@ -143,8 +113,7 @@ where
     {
         Self {
             backend: B::default(),
-            set: HashMap::default(),
-            hasher,
+            set: HashMap::with_hasher(hasher),
         }
     }
 
@@ -157,7 +126,6 @@ where
         Self {
             backend,
             set: HashMap::default(),
-            hasher: H::default(),
         }
     }
 
@@ -166,8 +134,7 @@ where
     pub fn with_backend_and_hasher(backend: B, hasher: H) -> Self {
         Self {
             backend,
-            hasher,
-            set: HashMap::default(),
+            set: HashMap::with_hasher(hasher),
         }
     }
 
@@ -176,10 +143,9 @@ where
         let Self {
             backend,
             set,
-            hasher,
         } = self;
 
-        let hash = hasher.hash_one(src);
+        let hash = set.hasher().hash_one(src);
 
         let entry = set
             .raw_entry_mut()
@@ -200,6 +166,15 @@ where
     pub fn resolve(&self, sym: B::Symbol) -> Option<&T> {
         self.backend.get(sym)
     }
+
+    /// Returns the number of elements currently interned
+    pub fn len(&self) -> usize { self.set.len() }
+
+    /// Returns true if the interner contains no elements
+    pub fn is_empty(&self) -> bool { self.set.is_empty() }
+
+    /// Returns the capacity of the interner
+    pub fn capacity(&self) -> usize { self.set.capacity() }
 }
 
 impl<T,B> Default for Interner<T,B>
