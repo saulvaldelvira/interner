@@ -53,7 +53,7 @@ pub type StringInterner = Interner<str,StringBuf>;
 ///
 /// It's only there to satisfy the HashMap's requirement that S: BuildHasher
 #[derive(Default)]
-pub struct DummyState;
+struct DummyState;
 
 impl Hasher for DummyState {
     fn finish(&self) -> u64 {
