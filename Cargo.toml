@@ -2,7 +2,7 @@
 name = "interns"
 description = "Object interner"
 authors = ["Saúl Valdelvira <saul@saulv.es>"]
-version = "0.3.0"
+version = "0.3.1"
 edition = "2024"
 license = "MIT"
 readme = "README"
@@ -15,5 +15,5 @@ features = ["raw-entry", "inline-more"]
 optional = true
 
 [features]
-default = []
+default = ["hashbrown"]
 hashbrown = ["dep:hashbrown"]

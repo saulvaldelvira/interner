@@ -4,3 +4,9 @@ Object interner in Rust
 == Documentation ==
 To build the documentation, run `cargo doc`
 Or browse it online at https://docs.rs/interns
+
+== Dependencies ==
+This crate works on nightly rust with zero dependencies.
+But since it makes use of the raw_entry_mut experimental API,
+we need to use hashbrown on stable rust.
+By default the hashbrown feature is enabled.
