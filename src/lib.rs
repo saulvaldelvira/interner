@@ -28,14 +28,8 @@
 //! assert_ne!(b, c);
 //! ```
 
-#![cfg_attr(not(feature = "hashbrown"), feature(hash_raw_entry))]
-
-#[cfg(feature = "hashbrown")]
-use hashbrown::{HashMap, hash_map::RawEntryMut};
-
-#[cfg(not(feature = "hashbrown"))]
-use std::collections::{HashMap, hash_map::RawEntryMut};
-
+use hashbrown::hash_map::RawEntryMut;
+use hashbrown::HashMap;
 use std::hash::{BuildHasher, Hash, RandomState};
 
 pub mod backend;
@@ -83,13 +77,14 @@ where
     B: Backend<T>,
 {
     backend: B,
-    set: HashMap<B::Symbol, (), H>,
+    set: HashMap<B::Symbol, (), ()>,
+    hasher: H,
 }
 
 impl<T, B, H> Interner<T, B, H>
 where
     T: Hash + Eq + PartialEq + ?Sized,
-    H: BuildHasher + Default,
+    H: BuildHasher,
     B: Backend<T>,
 {
     /// Create a new Interner with a default [backend](Backend)
@@ -102,6 +97,7 @@ where
         Self {
             backend: B::default(),
             set: HashMap::default(),
+            hasher: H::default(),
         }
     }
 
@@ -113,7 +109,8 @@ where
     {
         Self {
             backend: B::default(),
-            set: HashMap::with_hasher(hasher),
+            set: HashMap::default(),
+            hasher,
         }
     }
 
@@ -126,6 +123,7 @@ where
         Self {
             backend,
             set: HashMap::default(),
+            hasher: H::default(),
         }
     }
 
@@ -134,7 +132,8 @@ where
     pub fn with_backend_and_hasher(backend: B, hasher: H) -> Self {
         Self {
             backend,
-            set: HashMap::with_hasher(hasher),
+            hasher,
+            set: HashMap::default(),
         }
     }
 
@@ -143,9 +142,10 @@ where
         let Self {
             backend,
             set,
+            hasher,
         } = self;
 
-        let hash = set.hasher().hash_one(src);
+        let hash = hasher.hash_one(src);
 
         let entry = set
             .raw_entry_mut()
@@ -155,7 +155,12 @@ where
             RawEntryMut::Occupied(occupied) => occupied.into_key(),
             RawEntryMut::Vacant(vacant) => {
                 let sym = backend.intern(src);
-                vacant.insert_hashed_nocheck(hash, sym, ()).0
+                vacant
+                    .insert_with_hasher(hash, sym, (), |sym| {
+                        let src = unsafe { backend.get(*sym).unwrap_unchecked() };
+                        hasher.hash_one(src)
+                    })
+                    .0
             }
         };
 
@@ -166,15 +171,6 @@ where
     pub fn resolve(&self, sym: B::Symbol) -> Option<&T> {
         self.backend.get(sym)
     }
-
-    /// Returns the number of elements currently interned
-    pub fn len(&self) -> usize { self.set.len() }
-
-    /// Returns true if the interner contains no elements
-    pub fn is_empty(&self) -> bool { self.set.is_empty() }
-
-    /// Returns the capacity of the interner
-    pub fn capacity(&self) -> usize { self.set.capacity() }
 }
 
 impl<T,B> Default for Interner<T,B>

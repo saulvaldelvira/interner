@@ -91,16 +91,20 @@ fn resize_test() {
         /* When half of the elements are inserted,
          * save the capacity for later checking */
         if i == MAX / 2 {
-            cap = interner.capacity();
+            cap = interner.set.capacity();
         }
     }
 
     /* The hash map must have been resized */
-    assert!(interner.capacity() > cap);
+    assert!(interner.set.capacity() > cap);
 
     /* All the elements should be resolved correctly */
     for (i,n) in nums.iter().enumerate() {
-        assert_eq!(interner.resolve(*n), Some(format!("{i}")).as_deref());
+        let s = format!("{i}");
+        assert_eq!(interner.resolve(*n), Some(s.as_str()));
+
+        let new_sym = interner.get_or_intern(&s);
+        assert_eq!(new_sym.as_usize(), n.as_usize());
     }
 
 }

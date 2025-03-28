@@ -16,6 +16,10 @@ pub struct StringBuf {
 #[repr(transparent)]
 pub struct Symbol(usize);
 
+impl Symbol {
+    pub fn as_usize(&self) -> usize { self.0 }
+}
+
 impl Backend<str> for StringBuf {
     type Symbol = Symbol;
 

@@ -26,7 +26,6 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --features=hashbrown
 
   test:
     name: Test Suite
@@ -78,7 +77,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --features=hashbrown -- -D warnings
+          args: -- -D warnings
 
       - name: Run rustdoc lints
         uses: actions-rs/cargo@v1
