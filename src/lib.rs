@@ -151,8 +151,39 @@ where
         }
     }
 
-    /// Turns a reference of T into the backend's [symbol](Backend::Symbol)
+    /// Gets the [Symbol](Backend::Symbol) for `src`, interning it if it doesn't exist.
+    ///
+    /// # Example
+    /// ```
+    /// use interns::Interner;
+    ///
+    /// let mut interner = Interner::<str>::new();
+    /// let name = interner.get_or_intern("Abcd");
+    /// let name_again = interner.get_or_intern("Abcd");
+    /// assert_eq!(name, name_again);
+    /// ```
     pub fn get_or_intern(&mut self, src: &T) -> B::Symbol {
+        /* We are doing shenanigans here.
+         *
+         * We are storing B::Symbol as the key, but we don't hash the
+         * Symbol itself. `src` is a reference to T, so we have no way
+         * of getting a Symbol from `src`.
+         *
+         * When we look for a symbol, we pass the hash or `src`, and also provide
+         * a custom function to check if the keys match (in case of collision).
+         * This function must resolve the Symbol to a value of T, and test it against `src`.
+         *
+         * When we insert a new element, we also need to provide a custom hasher function.
+         * This is because an insertion could cause the table to resize, thus causing all
+         * keys to be rehashed. If we don't provide a custom hasher function, a resize
+         * would reallocate the keys according to the Symbol, not the `T` value they
+         * resolve to, making it imposible to retrive those symbols from a `T` reference
+         * in the future.
+         *
+         * For this trick to work, we need to make sure that we _always_ access the table
+         * with a custom function, that resolves the Symbols before hashing/comparing.
+         */
+
         let Self {
             backend,
             set,
@@ -163,7 +194,10 @@ where
 
         let entry = set
             .raw_entry_mut()
-            .from_hash(hash, |&sym| src == unsafe { backend.get(sym).unwrap_unchecked() });
+            .from_hash(hash, |&sym| {
+                /* SAFETY: If the symbol is on the table it must also be on the backend. */
+                src == unsafe { backend.get_unchecked(sym) }
+            });
 
         let k = match entry {
             RawEntryMut::Occupied(occupied) => occupied.into_key(),
@@ -171,7 +205,8 @@ where
                 let sym = backend.intern(src);
                 vacant
                     .insert_with_hasher(hash, sym, (), |sym| {
-                        let src = unsafe { backend.get(*sym).unwrap_unchecked() };
+                        /* SAFETY: We've interned the symbol on the call to `Backed::intern` above */
+                        let src = unsafe { backend.get_unchecked(*sym) };
                         hasher.hash_one(src)
                     })
                     .0
@@ -182,6 +217,16 @@ where
     }
 
     /// Resolves the [symbol](Backend::Symbol) into a reference of T
+    ///
+    /// # Example
+    /// ```
+    /// use interns::Interner;
+    ///
+    /// let mut interner = Interner::<str>::new();
+    /// let name = interner.get_or_intern("Abcd");
+    /// let resolved = interner.resolve(name);
+    /// assert_eq!(resolved, Some("Abcd"));
+    /// ```
     pub fn resolve(&self, sym: B::Symbol) -> Option<&T> {
         self.backend.get(sym)
     }

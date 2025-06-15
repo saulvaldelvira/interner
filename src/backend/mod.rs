@@ -49,5 +49,18 @@ pub trait Backend<T: ?Sized> {
     fn intern(&mut self, src: &T) -> Self::Symbol;
 
     /// Resolve the symbol
-    fn get(&self, sym: Self::Symbol) -> Option<&T> ;
+    fn get(&self, sym: Self::Symbol) -> Option<&T>;
+
+    /// Resolves the symbol, without checking if it exists on
+    /// the backend.
+    ///
+    /// # Safety
+    /// The caller must ensure that the symbol was retreived
+    /// from a call to this backend's [intern](Backend::intern) function.
+    unsafe fn get_unchecked(&self, sym: Self::Symbol) -> &T {
+        let val = self.get(sym);
+        debug_assert!(val.is_some());
+        /* SAFETY: the caller ensures that the symbol is valid for `self` */
+        unsafe { val.unwrap_unchecked() }
+    }
 }
