@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use super::*;
 
 use std::collections::HashMap;
@@ -56,21 +54,21 @@ fn test_struct() {
 }
 
 #[test]
-fn array_test() {
-    let mut interner = Interner::<Box<[u32]>>::default();
+fn box_test() {
+    let mut interner = Interner::<[u32]>::default();
 
-    /* TODO: Optimize this mESSSSSS  */
-    let v1 = interner.get_or_intern(&Box::from([1,2,3,4]));
-    let v2 = interner.get_or_intern(&Box::from([5,4,6,4]));
-    let v3 = interner.get_or_intern(&Box::from([1,2,3,4]));
+    let v1 = interner.get_or_intern(&[1,2,3,4][..]);
+    let v2 = interner.get_or_intern(&Vec::from([5,4,6,4]));
+    let v3 = interner.get_or_intern(&Box::<[u32]>::from([1, 2, 3, 4]));
 
     let v1_res = interner.resolve(v1).unwrap();
     let v2_res = interner.resolve(v2).unwrap();
     let v3_res = interner.resolve(v3).unwrap();
 
-    assert_eq!(v1_res.deref(), &[1,2,3,4]);
-    assert_eq!(v2_res.deref(), &[5,4,6,4]);
-    assert_eq!(v3_res.deref(), &[1,2,3,4]);
+    assert_eq!(v1, v3);
+    assert_eq!(v1_res, &[1,2,3,4]);
+    assert_eq!(v2_res, &[5,4,6,4]);
+    assert_eq!(v3_res, &[1,2,3,4]);
 }
 
 /// Test that the interner remains coherent after resizing the
@@ -107,4 +105,16 @@ fn resize_test() {
         assert_eq!(new_sym.as_usize(), n.as_usize());
     }
 
+}
+
+#[test]
+fn nums() {
+    let mut interner = Interner::<i32>::default();
+
+    let a = interner.get_or_intern(&12);
+
+    assert_eq!(a, interner.get_or_intern(&12));
+
+    let n = *interner.resolve(a).unwrap();
+    assert_eq!(n, 12);
 }

@@ -44,14 +44,17 @@
 
 use hashbrown::hash_map::RawEntryMut;
 use hashbrown::HashMap;
+use core::borrow::Borrow;
 use std::hash::{BuildHasher, Hash, RandomState};
 
 pub mod backend;
-pub use backend::{Backend, DefaultBackendBuilder, StringBuf};
+pub use backend::{Backend, DefaultBackendBuilder, StringBackend};
+
+use crate::backend::Internable;
 
 pub type Symbol<T, B = <T as DefaultBackendBuilder>::Backend> = <B as Backend<T>>::Symbol;
 
-pub type StringInterner = Interner<str,StringBuf>;
+pub type StringInterner = Interner<str,StringBackend>;
 
 /// Interner
 ///
@@ -162,7 +165,11 @@ where
     /// let name_again = interner.get_or_intern("Abcd");
     /// assert_eq!(name, name_again);
     /// ```
-    pub fn get_or_intern(&mut self, src: &T) -> B::Symbol {
+    pub fn get_or_intern<Ref>(&mut self, src: &Ref) -> B::Symbol
+    where
+        Ref: Internable<T, B> + ?Sized + Hash + Eq,
+        T: Borrow<Ref>,
+    {
         /* We are doing shenanigans here.
          *
          * We are storing B::Symbol as the key, but we don't hash the
@@ -196,7 +203,7 @@ where
             .raw_entry_mut()
             .from_hash(hash, |&sym| {
                 /* SAFETY: If the symbol is on the table it must also be on the backend. */
-                src == unsafe { backend.get_unchecked(sym) }
+                src == unsafe { backend.get_unchecked(sym) }.borrow()
             });
 
         let k = match entry {

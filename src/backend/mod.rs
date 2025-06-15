@@ -1,10 +1,14 @@
-mod string_buf;
+//! Storage for the interned elements
+
+use core::borrow::Borrow;
 use std::hash::Hash;
+
+mod string;
+pub use string::StringBackend;
 
 mod vec;
 pub use vec::VecBackend;
 
-pub use string_buf::StringBuf;
 
 /// Allows to specify a default backend for some type
 ///
@@ -20,6 +24,7 @@ pub trait DefaultBackendBuilder {
     fn build_backend() -> Self::Backend;
 }
 
+/// Resolves the default backend of a type
 pub type DefaultBackend<T> = <T as DefaultBackendBuilder>::Backend;
 
 impl<T: Sized + Clone> DefaultBackendBuilder for T {
@@ -31,13 +36,23 @@ impl<T: Sized + Clone> DefaultBackendBuilder for T {
 }
 
 impl DefaultBackendBuilder for str {
-    type Backend = StringBuf;
+    type Backend = StringBackend;
 
     fn build_backend() -> Self::Backend {
-        StringBuf::default()
+        StringBackend::default()
     }
 }
 
+impl<T> DefaultBackendBuilder for [T] {
+    type Backend = VecBackend<T>;
+
+    fn build_backend() -> Self::Backend {
+        VecBackend::default()
+
+    }
+}
+
+/// All the constraints for a [Symbol](Backend::Symbol)
 pub trait BackendSymbol: Clone + Copy + Hash + Eq + PartialEq {}
 impl<T> BackendSymbol for T where T: Clone + Copy + Hash + Eq + PartialEq {}
 
@@ -45,8 +60,14 @@ impl<T> BackendSymbol for T where T: Clone + Copy + Hash + Eq + PartialEq {}
 pub trait Backend<T: ?Sized> {
     type Symbol: BackendSymbol;
 
-    /// Intern the element
-    fn intern(&mut self, src: &T) -> Self::Symbol;
+    /// Intern an element into `self`
+    fn intern<B>(&mut self, src: &B) -> Self::Symbol
+    where
+        T: Borrow<B>,
+        B: Internable<T, Self> + ?Sized,
+    {
+        src.intern_into(self)
+    }
 
     /// Resolve the symbol
     fn get(&self, sym: Self::Symbol) -> Option<&T>;
@@ -64,3 +85,22 @@ pub trait Backend<T: ?Sized> {
         unsafe { val.unwrap_unchecked() }
     }
 }
+
+/// Defines how to intern a type into a [Backend]
+///
+/// This trait is needed because some backends have different
+/// constraints about what types they can intern
+///
+/// For example: The [StringBackend] can intern any kind of
+/// type that implements [`AsRef<str>`].
+/// But we can't just hack an `AsRef<T>` bound for any `Backend<T>`,
+/// since that would make it impossible for the [VecBackend] to receive
+/// a reference of `T` and clone it. (T doesn't implement `AsRef<T>`).
+pub trait Internable<T, B>
+where
+    T: Borrow<Self> + ?Sized,
+    B: Backend<T> + ?Sized,
+{
+    fn intern_into(&self, b: &mut B) -> B::Symbol;
+}
+
