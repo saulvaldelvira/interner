@@ -1,3 +1,5 @@
+use crate::backend::VecBackend;
+
 use super::*;
 
 use std::collections::HashMap;
@@ -117,4 +119,19 @@ fn nums() {
 
     let n = *interner.resolve(a).unwrap();
     assert_eq!(n, 12);
+}
+
+#[test]
+fn slices() {
+    /* Test that a VecBacked<T> implements Backend<[T]> as well */
+    let mut interner = Interner::<[u32], VecBackend<u32>>::new();
+
+    let slice = interner.get_or_intern(&[1, 2, 3, 4, 5]);
+    let second = interner.get_or_intern(&[45, 6]);
+    let third = interner.get_or_intern(&[1, 2, 3, 4, 5]);
+
+    assert_eq!(slice, third);
+
+    assert_eq!(interner.resolve(slice), Some(&[1, 2, 3, 4, 5][..]));
+    assert_eq!(interner.resolve(second), Some(&[45, 6][..]));
 }

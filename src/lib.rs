@@ -146,11 +146,11 @@ where
 
     /// Create a new Interner with the given [backend](Backend)
     /// and [hasher](BuildHasher)
-    pub fn with_backend_and_hasher(backend: B, hasher: H) -> Self {
+    pub const fn with_backend_and_hasher(backend: B, hasher: H) -> Self {
         Self {
             backend,
             hasher,
-            set: HashMap::default(),
+            set: HashMap::with_hasher(()),
         }
     }
 

@@ -15,7 +15,7 @@ pub struct StringBackend {
     spans: Vec<Span>,
 }
 
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct Symbol(usize);
 

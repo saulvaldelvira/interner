@@ -48,7 +48,6 @@ impl<T> DefaultBackendBuilder for [T] {
 
     fn build_backend() -> Self::Backend {
         VecBackend::default()
-
     }
 }
 
