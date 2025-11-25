@@ -135,3 +135,16 @@ fn slices() {
     assert_eq!(interner.resolve(slice), Some(&[1, 2, 3, 4, 5][..]));
     assert_eq!(interner.resolve(second), Some(&[45, 6][..]));
 }
+
+#[test]
+fn from_to_usize() {
+    let mut interner = Interner::<str>::default();
+
+    let hello_orig = interner.get_or_intern("Hellooo");
+
+    let hello_num = hello_orig.as_usize();
+
+    let hello_sym = Symbol::<str>::from_usize(hello_num);
+
+    assert_eq!(hello_sym, hello_orig);
+}

@@ -8,6 +8,36 @@ struct Span {
     pub len: usize,
 }
 
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, PartialOrd, Ord)]
+pub struct Symbol {
+    pub offset: u32,
+    pub len: u32,
+}
+
+impl Symbol {
+    pub const fn from_usize(val: usize) -> Self {
+        Self {
+            offset: (val >> 32) as u32,
+            len: (val & !( (!0) << 32 ) ) as u32,
+        }
+    }
+    pub const fn as_usize(&self) -> usize {
+        ((self.offset as usize) << 32) | self.len as usize
+    }
+
+    pub const fn is_inlined(&self) -> bool {
+        self.len != u32::MAX
+    }
+
+    pub const fn new_inlined(offset: u32, len: u32) -> Self {
+        Self { offset, len }
+    }
+
+    pub const fn new_indexed(index: usize) -> Self {
+        Self { offset: index as u32, len: u32::MAX }
+    }
+}
+
 /// Backend for strings
 #[derive(Default)]
 pub struct StringBackend {
@@ -15,20 +45,17 @@ pub struct StringBackend {
     spans: Vec<Span>,
 }
 
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, PartialOrd, Ord)]
-#[repr(transparent)]
-pub struct Symbol(usize);
-
-impl Symbol {
-    pub fn as_usize(&self) -> usize { self.0 }
-}
-
 impl Backend<str> for StringBackend {
     type Symbol = Symbol;
 
     fn get(&self, sym: Symbol) -> Option<&str> {
-        let span = self.spans.get(sym.0)?;
-        let src = &self.buf[span.offset..span.offset + span.len];
+        let (offset, len) = if sym.is_inlined() {
+            (sym.offset as usize, sym.len as usize)
+        } else {
+            let span = self.spans.get(sym.offset as usize)?;
+            (span.offset, span.len)
+        };
+        let src = &self.buf[offset..offset + len];
         Some(src)
     }
 }
@@ -44,9 +71,13 @@ where
         let len = src.len();
         b.buf.push_str(src);
 
-        let span = Span { offset, len };
-        let sym = Symbol(b.spans.len());
-        b.spans.push(span);
-        sym
+        if len < u32::MAX as usize && offset <= u32::MAX as usize {
+            Symbol::new_inlined(offset as u32, len as u32)
+        } else {
+            let span = Span { offset, len };
+            let offset = b.spans.len() as u32;
+            b.spans.push(span);
+            Symbol { offset, len: u32::MAX }
+        }
     }
 }
