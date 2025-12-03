@@ -1,3 +1,4 @@
+use crate::backend::string::StringInternerBuilder;
 use crate::backend::VecBackend;
 
 use super::*;
@@ -147,4 +148,18 @@ fn from_to_usize() {
     let hello_sym = Symbol::<str>::from_usize(hello_num);
 
     assert_eq!(hello_sym, hello_orig);
+}
+
+#[test]
+fn string_interner_prefill() {
+    const BUILDER: StringInternerBuilder<5> = StringInternerBuilder::with_const_symbols([
+        "Hello", "World", "How are", "you", "?"
+    ]);
+    let mut interner = BUILDER.build();
+
+    assert_eq!(interner.get_or_intern("Hello"), BUILDER.symbol_at(0));
+    assert_eq!(interner.get_or_intern("World"), BUILDER.symbol_at(1));
+    assert_eq!(interner.get_or_intern("How are"), BUILDER.symbol_at(2));
+    assert_eq!(interner.get_or_intern("you"), BUILDER.symbol_at(3));
+    assert_eq!(interner.get_or_intern("?"), BUILDER.symbol_at(4));
 }

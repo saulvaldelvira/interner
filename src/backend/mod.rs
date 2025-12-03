@@ -3,7 +3,7 @@
 use core::borrow::Borrow;
 use std::hash::Hash;
 
-mod string;
+pub mod string;
 pub use string::StringBackend;
 
 mod vec;
